@@ -18,6 +18,7 @@ import android.graphics.Shader
 import android.util.Log
 import com.devmobile.AIGenerator.data.api.GenerationResult
 import com.devmobile.AIGenerator.data.api.GeminiService
+import com.devmobile.AIGenerator.data.api.OpenRouterService
 import com.devmobile.AIGenerator.data.local.AIPortrait
 import com.devmobile.AIGenerator.data.local.AppDatabase
 import com.devmobile.AIGenerator.data.local.UserMetrics
@@ -37,9 +38,22 @@ class PortraitRepository(
     private val portraitDao = database.portraitDao()
     private val userMetricsDao = database.userMetricsDao()
     private val geminiService = GeminiService()
+    private val openRouterService = OpenRouterService()
 
     val allPortraits: Flow<List<AIPortrait>> = portraitDao.getAllPortraits()
     val userMetrics: Flow<UserMetrics?> = userMetricsDao.getUserMetrics()
+
+    fun getSelectedModel(): String {
+        return context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+            .getString("selected_model", "default") ?: "default"
+    }
+
+    fun setSelectedModel(model: String) {
+        context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putString("selected_model", model)
+            .apply()
+    }
 
     // Initialize metrics if first time launching
     suspend fun checkAndInitializeMetrics() = withContext(Dispatchers.IO) {
@@ -112,16 +126,19 @@ class PortraitRepository(
             return@withContext GenerationPipelineResult.Error("Out of coins. Click 'Earn Daily Coins' or buy Premium for unlimited high-quality generations.")
         }
 
-        val generatedBitmap: Bitmap
+        val selectedModel = getSelectedModel()
+        val apiKey = currentMetrics.customApiKey
 
         val apiRes = geminiService.generateImage(
             prompt = template.prompt,
-            faceBitmap = faceBitmap
+            faceBitmap = faceBitmap,
+            modelId = selectedModel,
+            apiKey = apiKey
         )
 
-        when (apiRes) {
+        val generatedBitmap = when (apiRes) {
             is GenerationResult.Success -> {
-                generatedBitmap = apiRes.bitmap
+                apiRes.bitmap
             }
             is GenerationResult.LoadingModel -> {
                 return@withContext GenerationPipelineResult.ModelLoading(apiRes.estimatedTimeSeconds)
@@ -160,11 +177,12 @@ class PortraitRepository(
         useCoin()
 
         // 6. DB Entry
+        val modelUsedName = if (selectedModel == "default") template.modelName else selectedModel
         val entity = AIPortrait(
             templateName = template.name,
             filePath = file.absolutePath,
             promptUsed = template.prompt,
-            modelUsed = template.modelName,
+            modelUsed = modelUsedName,
             isWatermarked = shouldWatermark
         )
         portraitDao.insertPortrait(entity)

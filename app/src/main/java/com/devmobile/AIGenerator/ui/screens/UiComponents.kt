@@ -94,7 +94,8 @@ fun AppNavigationUI(viewModel: PortraitViewModel) {
             SettingsDialog(
                 metrics = metrics ?: UserMetrics(),
                 onDismiss = { showSettings.value = false },
-                onTogglePremium = { viewModel.togglePremium(it) }
+                onTogglePremium = { viewModel.togglePremium(it) },
+                onUpdateApiKey = { viewModel.updateApiKey(it) }
             )
         }
 
@@ -560,6 +561,7 @@ fun TemplateDetailScreen(
 ) {
     val faceBitmap by viewModel.selectedFaceBitmap.collectAsState()
     val uiState by viewModel.generationUiState.collectAsState()
+    val selectedModel by viewModel.selectedModel.collectAsState()
     val context = LocalContext.current
 
     // Launcher activities
@@ -735,6 +737,104 @@ fun TemplateDetailScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            val showModelDialog = remember { mutableStateOf(false) }
+
+            // AI Model Selection Card
+            Spacer(modifier = Modifier.height(14.dp))
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1638)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showModelDialog.value = true }
+                    .testTag("model_selector_card")
+                    .border(1.dp, Color(0x30AC5DFF), RoundedCornerShape(14.dp))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val modelIcon = if (selectedModel == "default") Icons.Default.AutoAwesome else Icons.Default.Category
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(primaryColor.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = modelIcon,
+                                contentDescription = null,
+                                tint = primaryColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            val modelDisplayName = when (selectedModel) {
+                                "default" -> "Google AI Default"
+                                "google/gemini-2.5-flash-image" -> "Gemini 2.5 Image"
+                                "google/gemini-3.1-flash-image-preview" -> "Gemini 3.1 Image"
+                                "google/gemini-3-pro-image-preview" -> "Gemini 3 Pro Image"
+                                "openai/gpt-5-image-mini" -> "GPT-5 Image Mini"
+                                "openai/gpt-5-image" -> "GPT-5 Image"
+                                "openai/gpt-5.4-image-2" -> "GPT-5.4 Image 2"
+                                "openrouter/auto" -> "OpenRouter Auto"
+                                else -> selectedModel
+                            }
+                            Text(
+                                "AI Generation Model:",
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                fontSize = 11.sp
+                            )
+                            Text(
+                                modelDisplayName,
+                                color = primaryColor,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (selectedModel != "default" && metrics?.customApiKey.isNullOrBlank()) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color(0x30FF3B30))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    "CẦN KEY",
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Red
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Model Selection",
+                            tint = Color.LightGray,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            if (showModelDialog.value) {
+                ModelSelectionDialog(
+                    currentModel = selectedModel,
+                    onModelSelected = { viewModel.selectModel(it) },
+                    onDismiss = { showModelDialog.value = false }
+                )
+            }
 
             // Specs Card
             Spacer(modifier = Modifier.height(14.dp))
@@ -930,9 +1030,11 @@ fun SuccessDialogContent(result: AIPortrait, bitmap: Bitmap, onClose: () -> Unit
 fun SettingsDialog(
     metrics: UserMetrics,
     onDismiss: () -> Unit,
-    onTogglePremium: (Boolean) -> Unit
+    onTogglePremium: (Boolean) -> Unit,
+    onUpdateApiKey: (String) -> Unit
 ) {
     var premiumToggle by remember { mutableStateOf(metrics.isPremium) }
+    var apiKeyText by remember { mutableStateOf(metrics.customApiKey) }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -989,13 +1091,51 @@ fun SettingsDialog(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.1f)))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // OpenRouter Configuration
+                Text(
+                    "Cấu hình OpenRouter AI:",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                
+                OutlinedTextField(
+                    value = apiKeyText,
+                    onValueChange = {
+                        apiKeyText = it
+                        onUpdateApiKey(it)
+                    },
+                    label = { Text("OpenRouter API Key", color = Color.Gray) },
+                    placeholder = { Text("sk-or-...", color = Color.Gray.copy(alpha = 0.5f)) },
+                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 13.sp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.fillMaxWidth().testTag("api_key_textfield"),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Lấy API Key tại openrouter.ai/keys để sử dụng các mô hình tạo ảnh OpenRouter chất lượng cao.",
+                    color = Color.Gray,
+                    fontSize = 10.sp,
+                    lineHeight = 14.sp
+                )
+
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Button(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth().testTag("save_settings_button")
                 ) {
-                    Text("Đóng")
+                    Text("Đóng và Lưu")
                 }
             }
         }
@@ -1161,3 +1301,178 @@ fun ScanLinesOverlay() {
         )
     }
 }
+
+@Composable
+fun ModelSelectionDialog(
+    currentModel: String,
+    onModelSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val predefinedModels = listOf(
+        Pair("default", "Google AI Default (Gemini 3.1 Image)"),
+        Pair("google/gemini-2.5-flash-image", "Gemini 2.5 Image (Vision Fast)"),
+        Pair("google/gemini-3.1-flash-image-preview", "Gemini 3.1 Image (Standard)"),
+        Pair("google/gemini-3-pro-image-preview", "Gemini 3 Pro Image (Pro High)"),
+        Pair("openai/gpt-5-image-mini", "GPT-5 Image Mini (Optimized)"),
+        Pair("openai/gpt-5-image", "GPT-5 Image (Stunning Details)"),
+        Pair("openai/gpt-5.4-image-2", "GPT-5.4 Image 2 (Premium Output)"),
+        Pair("openrouter/auto", "OpenRouter Auto-Select (Optimal)")
+    )
+
+    var isCustomSelected by remember { mutableStateOf(currentModel !in predefinedModels.map { it.first }) }
+    var customModelText by remember { mutableStateOf(if (isCustomSelected) currentModel else "") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF141029)),
+            modifier = Modifier.fillMaxWidth().padding(14.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Chọn AI Model Tạo Ảnh",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = Color.White
+                    )
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // List of options
+                predefinedModels.forEach { (modelId, modelName) ->
+                    val isSelected = !isCustomSelected && currentModel == modelId
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isSelected) Color(0x20AC5DFF) else Color.Transparent)
+                            .clickable {
+                                isCustomSelected = false
+                                onModelSelected(modelId)
+                                onDismiss()
+                            }
+                            .padding(horizontal = 12.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Premium Custom Indicator
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .border(2.dp, if (isSelected) Color(0xFFAC5DFF) else Color.Gray, CircleShape)
+                                .background(if (isSelected) Color(0xFFAC5DFF) else Color.Transparent)
+                                .padding(4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                        .background(Color.Black)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(modelName, color = Color.White, fontSize = 13.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                            Text(if (modelId == "default") "Không cần API Key" else modelId, color = Color.Gray, fontSize = 10.sp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
+
+                // Custom Option
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isCustomSelected) Color(0x20AC5DFF) else Color.Transparent)
+                        .clickable {
+                            isCustomSelected = true
+                        }
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val isSelected = isCustomSelected
+                    // Premium Custom Indicator
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, if (isSelected) Color(0xFFAC5DFF) else Color.Gray, CircleShape)
+                            .background(if (isSelected) Color(0xFFAC5DFF) else Color.Transparent)
+                            .padding(4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(Color.Black)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text("Mô hình tùy chỉnh khác...", color = Color.White, fontSize = 13.sp, fontWeight = if (isCustomSelected) FontWeight.Bold else FontWeight.Normal)
+                        Text("Nhập ID mô hình bất kỳ từ OpenRouter", color = Color.Gray, fontSize = 10.sp)
+                    }
+                }
+
+                if (isCustomSelected) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = customModelText,
+                        onValueChange = {
+                            customModelText = it
+                        },
+                        label = { Text("Model ID từ OpenRouter", color = Color.Gray) },
+                        placeholder = { Text("e.g. recraft/recraft-v3", color = Color.Gray.copy(alpha = 0.5f)) },
+                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 13.sp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFAC5DFF),
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                            cursorColor = Color(0xFFAC5DFF)
+                        ),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Button(
+                        onClick = {
+                            if (customModelText.isNotBlank()) {
+                                onModelSelected(customModelText.trim())
+                                onDismiss()
+                            }
+                        },
+                        enabled = customModelText.isNotBlank(),
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(end = 12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFAC5DFF))
+                    ) {
+                        Text("Xác nhận", color = Color.Black)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+            }
+        }
+    }
+}
+

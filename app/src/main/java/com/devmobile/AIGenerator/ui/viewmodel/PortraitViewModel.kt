@@ -47,7 +47,9 @@ class PortraitViewModel(private val repository: PortraitRepository) : ViewModel(
             initialValue = emptyList()
         )
 
-    // UI state parameters
+    private val _selectedModel = MutableStateFlow(repository.getSelectedModel())
+    val selectedModel = _selectedModel.asStateFlow()
+
     private val _selectedCategory = MutableStateFlow("All")
     val selectedCategory = _selectedCategory.asStateFlow()
 
@@ -59,6 +61,11 @@ class PortraitViewModel(private val repository: PortraitRepository) : ViewModel(
 
     private val _generationUiState = MutableStateFlow<GenerationUiState>(GenerationUiState.Idle)
     val generationUiState = _generationUiState.asStateFlow()
+
+    fun selectModel(modelId: String) {
+        repository.setSelectedModel(modelId)
+        _selectedModel.value = modelId
+    }
 
     fun selectCategory(category: String) {
         _selectedCategory.value = category

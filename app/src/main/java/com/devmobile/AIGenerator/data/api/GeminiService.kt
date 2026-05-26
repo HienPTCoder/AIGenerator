@@ -16,29 +16,59 @@ import kotlinx.coroutines.withContext
 
 class GeminiService {
 
+    private val openRouterService = OpenRouterService()
+
     suspend fun generateImage(
         prompt: String,
-        faceBitmap: Bitmap
+        faceBitmap: Bitmap,
+        modelId: String = "default",
+        apiKey: String = ""
     ): GenerationResult = withContext(Dispatchers.IO) {
         try {
-            // Step 1: Phân tích khuôn mặt bằng gemini-2.5-flash (Google AI, free)
-            Log.d("GeminiService", "Step 1: Analyzing face with gemini-2.5-flash...")
-            val faceDescription = analyzeFace(faceBitmap)
-                ?: return@withContext GenerationResult.Error("Không thể nhận diện khuôn mặt. Hãy dùng ảnh chân dung rõ ràng hơn.")
-
+            // Step 1: Phân tích khuôn mặt bằng gemini-2.5-flash (Google AI hoặc OpenRouter)
+            val faceDescription: String = if (modelId == "default" || modelId.isBlank()) {
+                Log.d("GeminiService", "Step 1: Bypassing face analysis for default Gemini model.")
+                ""
+            } else {
+                if (apiKey.isBlank()) {
+                    return@withContext GenerationResult.Error("Vui lòng cấu hình OpenRouter API Key trong Cài đặt (AI Studio Hub) trước khi sử dụng model này.")
+                }
+                Log.d("GeminiService", "Step 1: Analyzing face with OpenRouter gemini-2.5-flash...")
+                val faceResult = openRouterService.analyzeFace(faceBitmap, apiKey)
+                when (faceResult) {
+                    is FaceAnalysisResult.Success -> faceResult.description
+                    is FaceAnalysisResult.Error -> {
+                        return@withContext GenerationResult.Error("Lỗi phân tích khuôn mặt từ OpenRouter: ${faceResult.message}")
+                    }
+                }
+            }
             Log.d("GeminiService", "Face description: $faceDescription")
 
-            // Step 2: Tạo ảnh bằng Imagen 3 với prompt kết hợp (Vertex AI)
-            val combinedPrompt = """
-                Ultra high quality portrait photo.
-                Person: $faceDescription.
-                Style: $prompt.
-                Cinematic lighting, sharp focus, 8k, photorealistic.
-            """.trimIndent()
+            // Step 2: Tạo ảnh bằng Imagen 3 hoặc OpenRouter
+            val combinedPrompt = if (faceDescription.isBlank()) {
+                prompt
+            } else {
+                """
+                    Ultra high quality portrait photo.
+                    Person: $faceDescription.
+                    Style: $prompt.
+                    Cinematic lighting, sharp focus, 8k, photorealistic.
+                """.trimIndent()
+            }
 
-            Log.d("GeminiService", "Step 2: Generating image with Imagen 3...")
-            val bitmap = generateWithImagen(combinedPrompt)
-                ?: return@withContext GenerationResult.Error("Không nhận được ảnh. Vui lòng thử lại.")
+            val bitmap = if (modelId == "default" || modelId.isBlank()) {
+                Log.d("GeminiService", "Step 2: Generating image with Imagen 3...")
+                generateWithImagen(combinedPrompt)
+                    ?: return@withContext GenerationResult.Error("Không nhận được ảnh từ Google AI. Vui lòng thử lại.")
+            } else {
+                Log.d("GeminiService", "Step 2: Generating image with OpenRouter model: $modelId...")
+                val openRouterRes = openRouterService.generateImage(modelId, combinedPrompt, apiKey)
+                when (openRouterRes) {
+                    is GenerationResult.Success -> openRouterRes.bitmap
+                    is GenerationResult.Error -> return@withContext GenerationResult.Error(openRouterRes.message)
+                    else -> return@withContext GenerationResult.Error("Phản hồi không xác định từ OpenRouter.")
+                }
+            }
 
             return@withContext GenerationResult.Success(bitmap, isSimulated = false)
 
@@ -47,25 +77,7 @@ class GeminiService {
             return@withContext GenerationResult.Error(buildUserMessage(e.localizedMessage ?: "Lỗi kết nối."))
         }
     }
-
-    private suspend fun analyzeFace(bitmap: Bitmap): String? {
-        val resized = scaleDownBitmap(bitmap, 512)
-        val model = Firebase.ai(backend = GenerativeBackend.googleAI())
-            .generativeModel("gemini-2.5-flash")
-
-        val response = model.generateContent(
-            content {
-                image(resized)
-                text(
-                    "Describe this person's appearance for AI portrait generation. " +
-                    "Return only concise English keywords separated by commas. " +
-                    "Focus on: gender, approximate age, face shape, hair style, hair color, " +
-                    "eye shape, skin tone, glasses, expression. No explanations."
-                )
-            }
-        )
-        return response.text?.trim()?.takeIf { it.isNotBlank() }
-    }
+    
 
     private suspend fun generateWithImagen(prompt: String): Bitmap? {
         val model = Firebase.ai(backend = GenerativeBackend.googleAI())
