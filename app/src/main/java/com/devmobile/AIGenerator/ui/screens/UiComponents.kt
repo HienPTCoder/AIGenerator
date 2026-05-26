@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -935,6 +937,7 @@ fun SettingsDialog(
     onTogglePremium: (Boolean) -> Unit
 ) {
     var keyText by remember { mutableStateOf(metrics.customApiKey) }
+    var keyVisible by remember { mutableStateOf(false) }
     var premiumToggle by remember { mutableStateOf(metrics.isPremium) }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -965,34 +968,73 @@ fun SettingsDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Gemini Input Configuration
+                // Gemini API Key Configuration
                 Text(
-                    "Firebase Vertex AI Mode (Secured):",
+                    "Gemini API Key",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.height(6.dp))
-                TextField(
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
                     value = keyText,
                     onValueChange = { keyText = it },
-                    placeholder = { Text("Đã kích hoạt bảo mật Vertex AI qua Firebase", fontSize = 12.sp) },
-                    enabled = false, // Disabled since Firebase is keyless and secure!
-                    colors = TextFieldDefaults.colors(
+                    placeholder = {
+                        Text(
+                            "AIzaSy...",
+                            fontSize = 13.sp,
+                            color = Color.Gray
+                        )
+                    },
+                    singleLine = true,
+                    visualTransformation = if (keyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.VpnKey,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (keyText.isNotEmpty()) {
+                                IconButton(onClick = { keyText = "" }, modifier = Modifier.size(36.dp)) {
+                                    Icon(
+                                        imageVector = Icons.Default.Clear,
+                                        contentDescription = "Xóa",
+                                        tint = Color.Gray,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                            IconButton(onClick = { keyVisible = !keyVisible }, modifier = Modifier.size(36.dp)) {
+                                Icon(
+                                    imageVector = if (keyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (keyVisible) "Ẩn key" else "Hiện key",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
-                        disabledTextColor = Color.LightGray,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = Color(0xFF3A3060),
+                        cursorColor = MaterialTheme.colorScheme.primary,
                         focusedContainerColor = Color(0xFF090518),
-                        unfocusedContainerColor = Color(0xFF090518),
-                        disabledContainerColor = Color(0xFF090518)
+                        unfocusedContainerColor = Color(0xFF090518)
                     ),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().testTag("api_key_field")
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    "💡 KẾT NỐI BẢO MẬT: Ứng dụng hiện đang gọi Gemini API một cách tuyệt đối an toàn thông qua máy chủ Firebase của bạn (được cấu hình qua tệp google-services.json). Bạn không cần tự nhập API Key ở đây nữa để tránh rủi ro bảo mật!",
-                    fontSize = 10.5.sp,
-                    color = Color(0xFFC4C0E2),
+                    "Lấy miễn phí tại aistudio.google.com → \"Get API key\"",
+                    fontSize = 10.sp,
+                    color = Color(0xFF8A80C0),
                     lineHeight = 14.sp
                 )
 

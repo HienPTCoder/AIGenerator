@@ -16,6 +16,7 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
 import android.util.Log
+import com.devmobile.AIGenerator.BuildConfig
 import com.devmobile.AIGenerator.data.api.GenerationResult
 import com.devmobile.AIGenerator.data.api.GeminiService
 import com.devmobile.AIGenerator.data.local.AIPortrait
@@ -114,10 +115,13 @@ class PortraitRepository(
 
         val generatedBitmap: Bitmap
 
-        // Remote Gemini Inference Call
+        // Remote Gemini Inference Call — dùng custom key nếu user đã nhập, fallback về BuildConfig
+        val effectiveKey = currentMetrics.customApiKey.takeIf { it.isNotBlank() }
+            ?: BuildConfig.GEMINI_API_KEY
         val apiRes = geminiService.generateImage(
             prompt = template.prompt,
-            faceBitmap = faceBitmap
+            faceBitmap = faceBitmap,
+            apiKey = effectiveKey
         )
 
         when (apiRes) {
