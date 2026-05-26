@@ -560,7 +560,6 @@ fun TemplateDetailScreen(
     onBack: () -> Unit
 ) {
     val faceBitmap by viewModel.selectedFaceBitmap.collectAsState()
-    val isSimulation by viewModel.useSimulationMode.collectAsState()
     val uiState by viewModel.generationUiState.collectAsState()
     val context = LocalContext.current
 
@@ -736,47 +735,7 @@ fun TemplateDetailScreen(
                 }
             }
 
-            // Options Switch card for simulation
             Spacer(modifier = Modifier.height(16.dp))
-            Card(
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF141029)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = if (isSimulation) Icons.Default.Speed else Icons.Default.CloudQueue,
-                                contentDescription = null,
-                                tint = primaryColor,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "On-Device Simulation",
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                fontSize = 13.sp
-                            )
-                        }
-                        Switch(
-                            checked = isSimulation,
-                            onCheckedChange = { viewModel.toggleSimulationMode(it) }
-                        )
-                    }
-                    Text(
-                        text = if (isSimulation) "Instant, offline photo-stylizer synthesizing results under 1.5 seconds. Standard free credit limit applies."
-                        else "Queries remote Gemini AI Studio. Model: ${template.modelName} & Imagen 3. Requires a valid API Token added in Settings.",
-                        fontSize = 11.sp,
-                        color = Color.Gray
-                    )
-                }
-            }
 
             // Specs Card
             Spacer(modifier = Modifier.height(14.dp))

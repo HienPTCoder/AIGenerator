@@ -57,9 +57,6 @@ class PortraitViewModel(private val repository: PortraitRepository) : ViewModel(
     private val _selectedFaceBitmap = MutableStateFlow<Bitmap?>(null)
     val selectedFaceBitmap = _selectedFaceBitmap.asStateFlow()
 
-    private val _useSimulationMode = MutableStateFlow(true) // Default to simulation mode for smooth, offline testing out of the box!
-    val useSimulationMode = _useSimulationMode.asStateFlow()
-
     private val _generationUiState = MutableStateFlow<GenerationUiState>(GenerationUiState.Idle)
     val generationUiState = _generationUiState.asStateFlow()
 
@@ -77,9 +74,7 @@ class PortraitViewModel(private val repository: PortraitRepository) : ViewModel(
         _selectedFaceBitmap.value = bitmap
     }
 
-    fun toggleSimulationMode(enabled: Boolean) {
-        _useSimulationMode.value = enabled
-    }
+
 
     fun resetGenerationState() {
         _generationUiState.value = GenerationUiState.Idle
@@ -147,8 +142,7 @@ class PortraitViewModel(private val repository: PortraitRepository) : ViewModel(
             
             val pipelineResult = repository.runGenerationPipeline(
                 template = template,
-                faceBitmap = face,
-                useLocalSimulation = _useSimulationMode.value
+                faceBitmap = face
             )
 
             when (pipelineResult) {

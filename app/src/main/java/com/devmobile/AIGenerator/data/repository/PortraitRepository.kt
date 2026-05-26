@@ -104,8 +104,7 @@ class PortraitRepository(
      */
     suspend fun runGenerationPipeline(
         template: PortraitTemplate,
-        faceBitmap: Bitmap,
-        useLocalSimulation: Boolean
+        faceBitmap: Bitmap
     ): GenerationPipelineResult = withContext(Dispatchers.IO) {
         // 1. Double check metrics
         val currentMetrics = userMetricsDao.getUserMetricsDirect() ?: UserMetrics()
@@ -114,30 +113,22 @@ class PortraitRepository(
         }
 
         val generatedBitmap: Bitmap
-        val simulated: Boolean
 
-        if (useLocalSimulation) {
-            // Local high-fidelity AI simulation rendering
-            generatedBitmap = synthesizeLocalSimulation(template, faceBitmap)
-            simulated = true
-        } else {
-            // Remote Gemini Inference Call
-            val apiRes = geminiService.generateImage(
-                prompt = template.prompt,
-                faceBitmap = faceBitmap
-            )
+        // Remote Gemini Inference Call
+        val apiRes = geminiService.generateImage(
+            prompt = template.prompt,
+            faceBitmap = faceBitmap
+        )
 
-            when (apiRes) {
-                is GenerationResult.Success -> {
-                    generatedBitmap = apiRes.bitmap
-                    simulated = false
-                }
-                is GenerationResult.LoadingModel -> {
-                    return@withContext GenerationPipelineResult.ModelLoading(apiRes.estimatedTimeSeconds)
-                }
-                is GenerationResult.Error -> {
-                    return@withContext GenerationPipelineResult.Error(apiRes.message)
-                }
+        when (apiRes) {
+            is GenerationResult.Success -> {
+                generatedBitmap = apiRes.bitmap
+            }
+            is GenerationResult.LoadingModel -> {
+                return@withContext GenerationPipelineResult.ModelLoading(apiRes.estimatedTimeSeconds)
+            }
+            is GenerationResult.Error -> {
+                return@withContext GenerationPipelineResult.Error(apiRes.message)
             }
         }
 
@@ -174,216 +165,12 @@ class PortraitRepository(
             templateName = template.name,
             filePath = file.absolutePath,
             promptUsed = template.prompt,
-            modelUsed = if (simulated) "On-Device Simulation Engine v2.0" else template.modelName,
+            modelUsed = template.modelName,
             isWatermarked = shouldWatermark
         )
         portraitDao.insertPortrait(entity)
 
         return@withContext GenerationPipelineResult.Success(entity, finalizedBitmap)
-    }
-
-    /**
-     * Combines background gradient colors with high-contrast filter processing
-     * and rounded framing to render gorgeous stylized studio-tier portraits locally.
-     */
-    private fun synthesizeLocalSimulation(template: PortraitTemplate, faceBitmap: Bitmap): Bitmap {
-        val width = 768
-        val height = 1024
-        val outBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(outBitmap)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-
-        // Segment colors based on category
-        val (gradColor1, gradColor2, gradColor3, filterId) = when (template.category) {
-            "Anime" -> Quadruplet(Color.parseColor("#120C24"), Color.parseColor("#4B1E8A"), Color.parseColor("#8E2DE2"), 1)
-            "Business" -> Quadruplet(Color.parseColor("#1F2937"), Color.parseColor("#111827"), Color.parseColor("#4B5563"), 2)
-            "Luxury" -> Quadruplet(Color.parseColor("#0F0C20"), Color.parseColor("#1B1A17"), Color.parseColor("#D4AF37"), 3)
-            "Wedding" -> Quadruplet(Color.parseColor("#FFEFFF"), Color.parseColor("#FFD2E8"), Color.parseColor("#FFF3F3"), 4)
-            "Fitness" -> Quadruplet(Color.parseColor("#0D0B16"), Color.parseColor("#16102C"), Color.parseColor("#D53F8C"), 5)
-            "Fantasy" -> Quadruplet(Color.parseColor("#090E21"), Color.parseColor("#1E3A8A"), Color.parseColor("#10B981"), 6)
-            "Cyberpunk" -> Quadruplet(Color.parseColor("#0E071D"), Color.parseColor("#7928CA"), Color.parseColor("#FF007A"), 7)
-            else -> Quadruplet(Color.parseColor("#0B0C10"), Color.parseColor("#1F2833"), Color.parseColor("#66FCF1"), 8)
-        }
-
-        // 1. Draw Radial-Linear Gradient Background
-        val radialShader = RadialGradient(
-            width / 2f, height / 2f, width * 0.8f,
-            intArrayOf(gradColor2, gradColor1),
-            floatArrayOf(0.1f, 1.0f), Shader.TileMode.CLAMP
-        )
-        paint.shader = radialShader
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
-        paint.shader = null
-
-        // Light rays/highlights for depth
-        val highlightsPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(),
-                intArrayOf(Color.TRANSPARENT, gradColor3, Color.TRANSPARENT),
-                floatArrayOf(0.2f, 0.5f, 0.8f), Shader.TileMode.CLAMP)
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.SCREEN)
-        }
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), highlightsPaint)
-
-        // 2. Prepare & Stylize Face Bitmap
-        // Scale and crop face inside a beautiful stylized oval or center frame
-        val faceMargin = 120
-        val faceSize = width - (faceMargin * 2)
-        val faceLeft = faceMargin.toFloat()
-        val faceTop = 220f
-        val faceRect = RectF(faceLeft, faceTop, faceLeft + faceSize, faceTop + (faceSize * 1.2f))
-
-        val styledFace = getStyledFace(faceBitmap, filterId, faceSize, (faceSize * 1.2f).toInt())
-
-        // Draw soft back-glow for the face
-        val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = RadialGradient(
-                faceRect.centerX(), faceRect.centerY(), faceSize * 0.8f,
-                gradColor3, Color.TRANSPARENT, Shader.TileMode.CLAMP
-            )
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.SCREEN)
-        }
-        canvas.drawCircle(faceRect.centerX(), faceRect.centerY(), faceSize * 0.7f, glowPaint)
-
-        // Put the styled face on top
-        canvas.drawBitmap(styledFace, null, faceRect, null)
-
-        // 3. Draw Neon Glowing Border Frame
-        val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = gradColor3
-            style = Paint.Style.STROKE
-            strokeWidth = 14f
-        }
-        canvas.drawRoundRect(faceRect, 48f, 48f, borderPaint)
-
-        // Draw custom lighting flares inside canvas (glassmorphic particles)
-        val particlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            alpha = 40
-        }
-        canvas.drawCircle(200f, 150f, 8f, particlePaint)
-        canvas.drawCircle(600f, 180f, 14f, particlePaint)
-        canvas.drawCircle(140f, 750f, 10f, particlePaint)
-        canvas.drawCircle(650f, 800f, 6f, particlePaint)
-
-        // 4. Artistic Bottom Ribbon
-        val ribbonRect = RectF(40f, height - 180f, width - 40f, height - 40f)
-        val ribbonPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#D9050510") // very dark purple semi-transparent
-            style = Paint.Style.FILL
-        }
-        canvas.drawRoundRect(ribbonRect, 28f, 28f, ribbonPaint)
-
-        // Thin glow on ribbon border
-        ribbonPaint.apply {
-            color = gradColor3
-            style = Paint.Style.STROKE
-            strokeWidth = 3f
-            alpha = 150
-        }
-        canvas.drawRoundRect(ribbonRect, 28f, 28f, ribbonPaint)
-
-        // Title and descriptor text on ribbon
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            textSize = 34f
-            textAlign = Paint.Align.CENTER
-            isFakeBoldText = true
-        }
-        canvas.drawText(template.name.uppercase(), width / 2f, height - 120f, textPaint)
-
-        textPaint.apply {
-            color = Color.parseColor("#99FFFFFF")
-            textSize = 22f
-            isFakeBoldText = false
-        }
-        canvas.drawText("AI Synthesis • Output: ${template.category} Premium", width / 2f, height - 74f, textPaint)
-
-        return outBitmap
-    }
-
-    private fun getStyledFace(src: Bitmap, filterId: Int, destW: Int, destH: Int): Bitmap {
-        val scaled = Bitmap.createScaledBitmap(src, destW, destH, true)
-        val styled = Bitmap.createBitmap(destW, destH, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(styled)
-        
-        // Base rounded mask to cut face into elegant card shape
-        val maskPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        val rectF = RectF(0f, 0f, destW.toFloat(), destH.toFloat())
-        canvas.drawRoundRect(rectF, 42f, 42f, maskPaint)
-
-        maskPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-
-        // Color styling filters
-        val cm = ColorMatrix()
-        when (filterId) {
-            1 -> { // Anime: Saturated, slightly dreamy pink/cyan highlight
-                cm.setSaturation(1.6f)
-            }
-            2 -> { // Business: Warm tone, refined corporate contrasts
-                cm.setSaturation(0.9f)
-            }
-            3 -> { // Luxury: Sophisticated gold-sepia undertone with premium contrast
-                val sepiaMat = ColorMatrix().apply {
-                    set(floatArrayOf(
-                        0.95f, 0.05f, 0f, 0f, 15f,
-                        0.05f, 0.90f, 0f, 0f, 10f,
-                        0f, 0.05f, 0.80f, 0f, 0f,
-                        0f, 0f, 0f, 1f, 0f
-                    ))
-                }
-                cm.postConcat(sepiaMat)
-            }
-            4 -> { // Wedding: Bright, airy soft pastel glow
-                cm.setSaturation(1.1f)
-                val brightnessMat = ColorMatrix().apply {
-                    set(floatArrayOf(
-                        1f, 0f, 0f, 0f, 20f,
-                        0f, 1f, 0f, 0f, 15f,
-                        0f, 0f, 1f, 0f, 15f,
-                        0f, 0f, 0f, 1f, 0f
-                    ))
-                }
-                cm.postConcat(brightnessMat)
-            }
-            5 -> { // Fitness: Metallic dark and contrasty with rich glow
-                cm.setSaturation(1.2f)
-            }
-            6 -> { // Fantasy: Cool elven bluish tones
-                val coolMat = ColorMatrix().apply {
-                    set(floatArrayOf(
-                        0.8f, 0f, 0.1f, 0f, 0f,
-                        0f, 0.9f, 0.1f, 0f, 10f,
-                        0f, 0f, 1.2f, 0f, 30f,
-                        0f, 0f, 0f, 1f, 0f
-                    ))
-                }
-                cm.postConcat(coolMat)
-            }
-            7 -> { // Cyberpunk: Extreme high contrast & pink-magenta pop
-                cm.setSaturation(1.7f)
-                val cyberMat = ColorMatrix().apply {
-                    set(floatArrayOf(
-                        1.2f, 0f, 0f, 0f, 30f,
-                        0f, 0.8f, 0f, 0f, -20f,
-                        0f, 0f, 1.4f, 0f, 50f,
-                        0f, 0f, 0f, 1f, 0f
-                    ))
-                }
-                cm.postConcat(cyberMat)
-            }
-            else -> {
-                cm.setSaturation(1.0f)
-            }
-        }
-
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            colorFilter = ColorMatrixColorFilter(cm)
-        }
-        
-        // Draw the scaled bitmap applying color filters and rounded mask
-        canvas.drawBitmap(scaled, 0f, 0f, paint)
-
-        return styled
     }
 
     private fun applyWatermark(src: Bitmap): Bitmap {
@@ -412,8 +199,6 @@ class PortraitRepository(
         return out
     }
 
-    // Helper holder
-    data class Quadruplet<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 }
 
 sealed class GenerationPipelineResult {
