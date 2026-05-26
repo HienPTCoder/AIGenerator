@@ -17,8 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -96,7 +94,6 @@ fun AppNavigationUI(viewModel: PortraitViewModel) {
             SettingsDialog(
                 metrics = metrics ?: UserMetrics(),
                 onDismiss = { showSettings.value = false },
-                onSaveApiKey = { viewModel.updateApiKey(it) },
                 onTogglePremium = { viewModel.togglePremium(it) }
             )
         }
@@ -933,11 +930,8 @@ fun SuccessDialogContent(result: AIPortrait, bitmap: Bitmap, onClose: () -> Unit
 fun SettingsDialog(
     metrics: UserMetrics,
     onDismiss: () -> Unit,
-    onSaveApiKey: (String) -> Unit,
     onTogglePremium: (Boolean) -> Unit
 ) {
-    var keyText by remember { mutableStateOf(metrics.customApiKey) }
-    var keyVisible by remember { mutableStateOf(false) }
     var premiumToggle by remember { mutableStateOf(metrics.isPremium) }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -967,78 +961,6 @@ fun SettingsDialog(
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
-
-                // Gemini API Key Configuration
-                Text(
-                    "Gemini API Key",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = keyText,
-                    onValueChange = { keyText = it },
-                    placeholder = {
-                        Text(
-                            "AIzaSy...",
-                            fontSize = 13.sp,
-                            color = Color.Gray
-                        )
-                    },
-                    singleLine = true,
-                    visualTransformation = if (keyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.VpnKey,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    trailingIcon = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (keyText.isNotEmpty()) {
-                                IconButton(onClick = { keyText = "" }, modifier = Modifier.size(36.dp)) {
-                                    Icon(
-                                        imageVector = Icons.Default.Clear,
-                                        contentDescription = "Xóa",
-                                        tint = Color.Gray,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                            IconButton(onClick = { keyVisible = !keyVisible }, modifier = Modifier.size(36.dp)) {
-                                Icon(
-                                    imageVector = if (keyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = if (keyVisible) "Ẩn key" else "Hiện key",
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color(0xFF3A3060),
-                        cursorColor = MaterialTheme.colorScheme.primary,
-                        focusedContainerColor = Color(0xFF090518),
-                        unfocusedContainerColor = Color(0xFF090518)
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth().testTag("api_key_field")
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    "Lấy miễn phí tại aistudio.google.com → \"Get API key\"",
-                    fontSize = 10.sp,
-                    color = Color(0xFF8A80C0),
-                    lineHeight = 14.sp
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
 
                 // Premium Configuration simulator
                 Text(
@@ -1070,13 +992,10 @@ fun SettingsDialog(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Button(
-                    onClick = {
-                        onSaveApiKey(keyText)
-                        onDismiss()
-                    },
+                    onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth().testTag("save_settings_button")
                 ) {
-                    Text("Lưu Cấu Hình (Save)")
+                    Text("Đóng")
                 }
             }
         }
