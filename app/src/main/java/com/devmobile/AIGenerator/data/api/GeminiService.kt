@@ -1,16 +1,15 @@
 package com.devmobile.AIGenerator.data.api
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Log
 import com.google.firebase.Firebase
 import com.google.firebase.ai.ai
 import com.google.firebase.ai.type.GenerativeBackend
-import com.google.firebase.ai.type.content
-import com.google.firebase.ai.ImagenModel
-import com.google.firebase.ai.type.ImagenGenerationConfig
 import com.google.firebase.ai.type.ImagenAspectRatio
-import android.graphics.BitmapFactory
+import com.google.firebase.ai.type.ImagenGenerationConfig
 import com.google.firebase.ai.type.ImagenInlineImage
+import com.google.firebase.ai.type.content
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -25,12 +24,7 @@ class GeminiService {
      * removing the need for a client-side API Key entirely!
      */
     suspend fun generateImage(
-        modelName: String, // Kept for signature compatibility
-        apiKey: String, // Kept for signature compatibility
         prompt: String,
-        negativePrompt: String, // Kept for signature compatibility
-        styleStrength: Float, // Kept for signature compatibility
-        guidanceScale: Float, // Kept for signature compatibility
         faceBitmap: Bitmap
     ): GenerationResult = withContext(Dispatchers.IO) {
         try {

@@ -113,9 +113,6 @@ class PortraitRepository(
             return@withContext GenerationPipelineResult.Error("Out of coins. Click 'Earn Daily Coins' or buy Premium for unlimited high-quality generations.")
         }
 
-        // 2. Base API key extraction or simulate
-        val apiKey = currentMetrics.customApiKey.trim()
-
         val generatedBitmap: Bitmap
         val simulated: Boolean
 
@@ -126,12 +123,7 @@ class PortraitRepository(
         } else {
             // Remote Gemini Inference Call
             val apiRes = geminiService.generateImage(
-                modelName = template.modelName,
-                apiKey = apiKey,
                 prompt = template.prompt,
-                negativePrompt = template.negativePrompt,
-                styleStrength = template.styleStrength,
-                guidanceScale = template.guidanceScale,
                 faceBitmap = faceBitmap
             )
 
