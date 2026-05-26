@@ -12,6 +12,7 @@ import com.google.firebase.ai.type.ImagenInlineImage
 import com.google.firebase.ai.type.content
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.core.graphics.scale
 
 class GeminiService {
 
@@ -58,7 +59,8 @@ class GeminiService {
             // Step 3: Run Image synthesis using Imagen 3 via Firebase SDK
             Log.d("GeminiService", "Synthesizing image via Firebase Imagen 3...")
             
-            val imagenModel = aiInstance.imagenModel(
+            val vertexAIInstance = Firebase.ai(backend = GenerativeBackend.vertexAI())
+            val imagenModel = vertexAIInstance.imagenModel(
                 modelName = "imagen-3.0-generate-002",
                 generationConfig = ImagenGenerationConfig(
                     numberOfImages = 1,
@@ -105,7 +107,7 @@ class GeminiService {
             newHeight = maxDimension
             newWidth = (maxDimension * ratio).toInt()
         }
-        return Bitmap.createScaledBitmap(src, newWidth, newHeight, true)
+        return src.scale(newWidth, newHeight)
     }
 }
 
