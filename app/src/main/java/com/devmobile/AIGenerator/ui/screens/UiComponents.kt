@@ -1,4 +1,4 @@
-package com.example.ui.screens
+package com.devmobile.AIGenerator.ui.screens
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -38,12 +38,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
-import com.example.data.local.AIPortrait
-import com.example.data.local.UserMetrics
-import com.example.data.model.PortraitTemplate
-import com.example.data.model.TemplateProvider
-import com.example.ui.viewmodel.GenerationUiState
-import com.example.ui.viewmodel.PortraitViewModel
+import com.devmobile.AIGenerator.data.local.AIPortrait
+import com.devmobile.AIGenerator.data.local.UserMetrics
+import com.devmobile.AIGenerator.data.model.PortraitTemplate
+import com.devmobile.AIGenerator.data.model.TemplateProvider
+import com.devmobile.AIGenerator.ui.viewmodel.GenerationUiState
+import com.devmobile.AIGenerator.ui.viewmodel.PortraitViewModel
 import java.io.File
 
 /**
@@ -55,7 +55,7 @@ fun AppNavigationUI(viewModel: PortraitViewModel) {
     val selectedTemplate by viewModel.selectedTemplate.collectAsState()
     val showSettings = remember { mutableStateOf(false) }
     val showHistory = remember { mutableStateOf(false) }
-    
+
     val metrics by viewModel.userMetrics.collectAsState()
 
     Box(
@@ -170,7 +170,7 @@ fun HomeScreen(
                 color = Color.White
             )
             Spacer(modifier = Modifier.height(10.dp))
-            
+
             val finalCategories = listOf("All") + TemplateProvider.categories
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -416,7 +416,7 @@ fun PromotionBanner(metrics: UserMetrics?, onUnlockPremium: () -> Unit) {
 fun CategoryChip(name: String, isActive: Boolean, onClick: () -> Unit) {
     val bgColor = if (isActive) MaterialTheme.colorScheme.primary else Color(0xFF130E26)
     val borderColor = if (isActive) Color.White.copy(alpha = 0.2f) else Color(0x30AC5DFF)
-    
+
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
@@ -530,7 +530,7 @@ fun TemplateCard(
                 }
 
                 Spacer(modifier = Modifier.height(3.dp))
-                
+
                 Text(
                     text = template.name,
                     color = Color.White,
@@ -771,7 +771,7 @@ fun TemplateDetailScreen(
                     }
                     Text(
                         text = if (isSimulation) "Instant, offline photo-stylizer synthesizing results under 1.5 seconds. Standard free credit limit applies."
-                               else "Queries remote Hugging Face Server. Model: ${template.modelName}. Requires a valid API Token added in Settings.",
+                        else "Queries remote Gemini AI Studio. Model: ${template.modelName} & Imagen 3. Requires a valid API Token added in Settings.",
                         fontSize = 11.sp,
                         color = Color.Gray
                     )
@@ -837,7 +837,7 @@ fun TemplateDetailScreen(
                     StatusRow(title = "Synthesizing AI pixels...", isSpinning = true)
                 }
                 is GenerationUiState.ModelWarmingUp -> {
-                    StatusRow(title = "Hugging Face is loading base model: ${state.estimatedSeconds}s remaining...", isSpinning = true)
+                    StatusRow(title = "Gemini is warming up: ${state.estimatedSeconds}s remaining...", isSpinning = true)
                 }
                 is GenerationUiState.Error -> {
                     Card(
@@ -939,7 +939,7 @@ fun SuccessDialogContent(result: AIPortrait, bitmap: Bitmap, onClose: () -> Unit
                 color = MaterialTheme.colorScheme.primary,
                 fontSize = 14.sp
             )
-            
+
             Text(
                 "Model: ${result.modelUsed}",
                 color = Color.Gray,
@@ -1006,9 +1006,9 @@ fun SettingsDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Hugging Face Input Configuration
+                // Gemini Input Configuration
                 Text(
-                    "Hugging Face API Key:",
+                    "Firebase Vertex AI Mode (Secured):",
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.primary
@@ -1017,26 +1017,31 @@ fun SettingsDialog(
                 TextField(
                     value = keyText,
                     onValueChange = { keyText = it },
-                    placeholder = { Text("Bearer hf_xxxxxx", fontSize = 12.sp) },
+                    placeholder = { Text("Đã kích hoạt bảo mật Vertex AI qua Firebase", fontSize = 12.sp) },
+                    enabled = false, // Disabled since Firebase is keyless and secure!
                     colors = TextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
+                        disabledTextColor = Color.LightGray,
                         focusedContainerColor = Color(0xFF090518),
-                        unfocusedContainerColor = Color(0xFF090518)
+                        unfocusedContainerColor = Color(0xFF090518),
+                        disabledContainerColor = Color(0xFF090518)
                     ),
                     modifier = Modifier.fillMaxWidth().testTag("api_key_field")
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    "Token will be stored securely on device.",
-                    fontSize = 10.sp,
-                    color = Color.Gray
+                    "💡 KẾT NỐI BẢO MẬT: Ứng dụng hiện đang gọi Gemini API một cách tuyệt đối an toàn thông qua máy chủ Firebase của bạn (được cấu hình qua tệp google-services.json). Bạn không cần tự nhập API Key ở đây nữa để tránh rủi ro bảo mật!",
+                    fontSize = 10.5.sp,
+                    color = Color(0xFFC4C0E2),
+                    lineHeight = 14.sp
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Premium Configuration simulator
                 Text(
-                    "VIP Premium Status Sim:",
+                    "Mô Phỏng Trạng Thái VIP Premium:",
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.tertiary
@@ -1047,7 +1052,10 @@ fun SettingsDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Unlock Premium Status", color = Color.White, fontSize = 12.sp)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Mở khóa Premium VIP", color = Color.White, fontSize = 12.sp)
+                        Text("Không giới hạn lượt tạo, không watermark", color = Color.Gray, fontSize = 10.sp)
+                    }
                     Switch(
                         checked = premiumToggle,
                         onCheckedChange = {
@@ -1067,7 +1075,7 @@ fun SettingsDialog(
                     },
                     modifier = Modifier.fillMaxWidth().testTag("save_settings_button")
                 ) {
-                    Text("Save Configurations")
+                    Text("Lưu Cấu Hình (Save)")
                 }
             }
         }

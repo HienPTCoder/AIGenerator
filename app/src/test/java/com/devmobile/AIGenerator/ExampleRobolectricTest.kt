@@ -1,4 +1,4 @@
-package com.example
+package com.devmobile.AIGenerator
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider

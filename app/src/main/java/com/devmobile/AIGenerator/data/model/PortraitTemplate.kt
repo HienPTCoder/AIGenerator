@@ -1,4 +1,4 @@
-package com.example.data.model
+package com.devmobile.AIGenerator.data.model
 
 data class PortraitTemplate(
     val id: String,

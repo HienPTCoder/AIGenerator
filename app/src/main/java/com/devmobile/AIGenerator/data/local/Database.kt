@@ -1,4 +1,4 @@
-package com.example.data.local
+package com.devmobile.AIGenerator.data.local
 
 import androidx.room.Dao
 import androidx.room.Database

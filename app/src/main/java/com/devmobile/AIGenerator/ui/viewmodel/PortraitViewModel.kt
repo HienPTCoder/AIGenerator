@@ -1,14 +1,14 @@
-package com.example.ui.viewmodel
+package com.devmobile.AIGenerator.ui.viewmodel
 
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.data.local.AIPortrait
-import com.example.data.local.UserMetrics
-import com.example.data.model.PortraitTemplate
-import com.example.data.repository.GenerationPipelineResult
-import com.example.data.repository.PortraitRepository
+import com.devmobile.AIGenerator.data.local.AIPortrait
+import com.devmobile.AIGenerator.data.local.UserMetrics
+import com.devmobile.AIGenerator.data.model.PortraitTemplate
+import com.devmobile.AIGenerator.data.repository.GenerationPipelineResult
+import com.devmobile.AIGenerator.data.repository.PortraitRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

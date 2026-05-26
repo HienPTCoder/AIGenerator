@@ -1,6 +1,6 @@
 {
   "name": "AI Portrait Generator",
-  "description": "Generate professional and stylish portraits from local photos using Hugging Face AI Models.",
+  "description": "Generate professional and stylish portraits from local photos using Google Gemini AI Models.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

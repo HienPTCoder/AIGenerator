@@ -1,4 +1,4 @@
-package com.example
+package com.devmobile.AIGenerator
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -6,18 +6,17 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModelProvider
 import androidx.room.Room
-import com.example.data.local.AppDatabase
-import com.example.data.repository.PortraitRepository
-import com.example.ui.screens.AppNavigationUI
-import com.example.ui.theme.MyApplicationTheme
-import com.example.ui.viewmodel.PortraitViewModel
-import com.example.ui.viewmodel.PortraitViewModelFactory
+import com.devmobile.AIGenerator.data.local.AppDatabase
+import com.devmobile.AIGenerator.data.repository.PortraitRepository
+import com.devmobile.AIGenerator.ui.screens.AppNavigationUI
+import com.devmobile.AIGenerator.ui.theme.MyApplicationTheme
+import com.devmobile.AIGenerator.ui.viewmodel.PortraitViewModel
+import com.devmobile.AIGenerator.ui.viewmodel.PortraitViewModelFactory
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    
-    // Instantiate Local Cache Database and Controller Components
+
     val database = Room.databaseBuilder(
       applicationContext,
       AppDatabase::class.java,

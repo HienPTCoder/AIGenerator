@@ -1,4 +1,4 @@
-package com.example.data.repository
+package com.devmobile.AIGenerator.data.repository
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -16,12 +16,12 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
 import android.util.Log
-import com.example.data.api.GenerationResult
-import com.example.data.api.HuggingFaceService
-import com.example.data.local.AIPortrait
-import com.example.data.local.AppDatabase
-import com.example.data.local.UserMetrics
-import com.example.data.model.PortraitTemplate
+import com.devmobile.AIGenerator.data.api.GenerationResult
+import com.devmobile.AIGenerator.data.api.GeminiService
+import com.devmobile.AIGenerator.data.local.AIPortrait
+import com.devmobile.AIGenerator.data.local.AppDatabase
+import com.devmobile.AIGenerator.data.local.UserMetrics
+import com.devmobile.AIGenerator.data.model.PortraitTemplate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -36,7 +36,7 @@ class PortraitRepository(
 ) {
     private val portraitDao = database.portraitDao()
     private val userMetricsDao = database.userMetricsDao()
-    private val huggingFaceService = HuggingFaceService()
+    private val geminiService = GeminiService()
 
     val allPortraits: Flow<List<AIPortrait>> = portraitDao.getAllPortraits()
     val userMetrics: Flow<UserMetrics?> = userMetricsDao.getUserMetrics()
@@ -119,13 +119,13 @@ class PortraitRepository(
         val generatedBitmap: Bitmap
         val simulated: Boolean
 
-        if (useLocalSimulation || apiKey.isEmpty()) {
+        if (useLocalSimulation) {
             // Local high-fidelity AI simulation rendering
             generatedBitmap = synthesizeLocalSimulation(template, faceBitmap)
             simulated = true
         } else {
-            // Remote Hugging Face Inference Call
-            val apiRes = huggingFaceService.generateImage(
+            // Remote Gemini Inference Call
+            val apiRes = geminiService.generateImage(
                 modelName = template.modelName,
                 apiKey = apiKey,
                 prompt = template.prompt,
